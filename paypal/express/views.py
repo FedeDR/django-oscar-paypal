@@ -326,28 +326,53 @@ class SuccessResponseView(PaymentDetailsView):
         """
         Return a created shipping address instance, created using
         the data returned by PayPal.
+        Check if it's the same than the sessioned one
         """
         # Determine names - PayPal uses a single field
         ship_to_name = self.txn.value('PAYMENTREQUEST_0_SHIPTONAME')
         if ship_to_name is None:
             return None
-        first_name = last_name = None
-        parts = ship_to_name.split()
-        if len(parts) == 1:
-            last_name = ship_to_name
-        elif len(parts) > 1:
-            first_name = parts[0]
-            last_name = " ".join(parts[1:])
-        return ShippingAddress(
-            first_name=first_name,
-            last_name=last_name,
-            line1=self.txn.value('PAYMENTREQUEST_0_SHIPTOSTREET'),
-            line2=self.txn.value('PAYMENTREQUEST_0_SHIPTOSTREET2', default=""),
-            line4=self.txn.value('PAYMENTREQUEST_0_SHIPTOCITY', default=""),
-            state=self.txn.value('PAYMENTREQUEST_0_SHIPTOSTATE', default=""),
-            postcode=self.txn.value('PAYMENTREQUEST_0_SHIPTOZIP'),
-            country=Country.objects.get(iso_3166_1_a2=self.txn.value('PAYMENTREQUEST_0_SHIPTOCOUNTRYCODE'))
-        )
+
+        session_addr = super(SuccessResponseView, self).get_shipping_address(basket)
+        if session_addr:
+            cmp_dict = {
+                'name': session_addr.name,
+                'line1': session_addr.line1,
+                'line2': session_addr.line2,
+                'line4': session_addr.line4,
+                'state': session_addr.state,
+                'postcode': session_addr.postcode,
+                'country': session_addr.country
+            }
+        else:
+            cmp_dict = {}
+
+        paypal_ship = {
+            'name': ship_to_name,
+            'line1': self.txn.value('PAYMENTREQUEST_0_SHIPTOSTREET'),
+            'line2': self.txn.value('PAYMENTREQUEST_0_SHIPTOSTREET2', default=""),
+            'line4': self.txn.value('PAYMENTREQUEST_0_SHIPTOCITY', default=""),
+            'state': self.txn.value('PAYMENTREQUEST_0_SHIPTOSTATE', default=""),
+            'postcode': self.txn.value('PAYMENTREQUEST_0_SHIPTOZIP'),
+            'country': Country.objects.get(iso_3166_1_a2=self.txn.value('PAYMENTREQUEST_0_SHIPTOCOUNTRYCODE'))
+        }
+
+        if cmp(cmp_dict, paypal_ship) == 0:
+            return session_addr
+        else:
+            paypal_ship.pop('name', None)
+            first_name = last_name = None
+            parts = ship_to_name.split()
+            if len(parts) == 1:
+                last_name = ship_to_name
+            elif len(parts) > 1:
+                first_name = parts[0]
+                last_name = " ".join(parts[1:])
+            return ShippingAddress(
+                first_name=first_name,
+                last_name=last_name,
+                **paypal_ship
+            )
 
     def get_shipping_method(self, basket, shipping_address=None, **kwargs):
         """
