@@ -13,6 +13,8 @@ from paypal.express.gateway import (
     do_capture, DO_EXPRESS_CHECKOUT, do_void, refund_txn
 )
 
+#this add is for currency switcher#
+from tag_fix.templatetags.currency_filters import currency_checker
 
 def _get_payment_action():
     # PayPal supports 3 actions: 'Sale', 'Authorization', 'Order'
@@ -33,10 +35,12 @@ def get_paypal_url(basket, shipping_methods, user=None, shipping_address=None,
     given to PayPal directly - this is used within when using PayPal as a
     payment method.
     """
-    if basket.currency:
-        currency = basket.currency
-    else:
-        currency = getattr(settings, 'PAYPAL_CURRENCY', 'GBP')
+    #modify for currency switcher#
+    # if basket.currency:
+    #     currency = basket.currency
+    # else:
+    #     currency = getattr(settings, 'PAYPAL_CURRENCY', 'GBP')
+    currency, lang = currency_checker()
     if host is None:
         host = Site.objects.get_current().domain
     if scheme is None:
