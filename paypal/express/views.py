@@ -166,7 +166,7 @@ class SuccessResponseView(PaymentDetailsView):
     # We don't have the usual pre-conditions (Oscar 0.7+)
     @property
     def pre_conditions(self):
-        return [] if oscar.VERSION[:2] >= (0, 8) else ()
+        return [] if oscar.VERSION[:2] >= (1, 1) else ()
 
     def get(self, request, *args, **kwargs):
         """
@@ -225,7 +225,7 @@ class SuccessResponseView(PaymentDetailsView):
             basket.strategy = Selector().strategy(self.request)
 
         # Re-apply any offers
-        Applicator().apply(self.request, basket)
+        Applicator().apply(basket, self.request.user, self.request)
 
         return basket
 
